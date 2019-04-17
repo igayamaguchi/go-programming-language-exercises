@@ -1,79 +1,46 @@
-// Copyright © 2016 Alan A. A. Donovan & Brian W. Kernighan.
-// License: https://creativecommons.org/licenses/by-nc-sa/4.0/
-
-// See page 122.
-//!+main
-
-// Findlinks1 prints the links in an HTML document read from standard input.
 package main
 
 import (
 	"fmt"
 	"os"
+  "strings"
 
-	"golang.org/x/net/html"
+  "golang.org/x/net/html"
 )
 
 func main() {
-  // go run .\ch1\fetch https://golang.org | go run .\ch5\ex01
   fmt.Println("start")
-	doc, err := html.Parse(os.Stdin)
+	doc, err := html.Parse(strings.NewReader(`<html>
+<head>
+<style>
+</style>
+</head>
+<body>
+<div>
+  div
+  <span>span</span
+</div>
+<script>script</script>
+</body>
+</html>
+`))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "findlinks1: %v\n", err)
 		os.Exit(1)
 	}
-	for _, link := range visit(nil, doc) {
+	for _, link := range getText(nil, doc) {
 		fmt.Println(link)
 	}
   fmt.Println("end")
 }
 
-//!-main
-
-//!+visit
-// visit appends to links each link found in n and returns the result.
-func visit(links []string, n *html.Node) []string {
-	if n.Type == html.ElementNode && n.Data == "a" {
-		for _, a := range n.Attr {
-			if a.Key == "href" {
-				links = append(links, a.Val)
-			}
-		}
+// 改行未対応
+func getText(textList []string, n *html.Node) []string {
+	if n.Type == html.TextNode && n.Data != "script" && n.Data != "style" {
+	  textList = append(textList, n.Data)
 	}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		links = visit(links, c)
+		textList = getText(textList, c)
 	}
-	return links
+	return textList
 }
-
-//!-visit
-
-/*
-//!+html
-package html
-
-type Node struct {
-	Type                    NodeType
-	Data                    string
-	Attr                    []Attribute
-	FirstChild, NextSibling *Node
-}
-
-type NodeType int32
-
-const (
-	ErrorNode NodeType = iota
-	TextNode
-	DocumentNode
-	ElementNode
-	CommentNode
-	DoctypeNode
-)
-
-type Attribute struct {
-	Key, Val string
-}
-
-func Parse(r io.Reader) (*Node, error)
-//!-html
-*/
